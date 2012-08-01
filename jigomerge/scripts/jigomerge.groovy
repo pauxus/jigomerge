@@ -82,8 +82,8 @@ public class SvnMergeTool {
 
     for (int i = 0; i < nbRevisions; i++) {
       def revision = revisions[i]
-      printOut.println ' Handling revision ' + revision + ' ...'
-      def comment = retrieveCommentFromRevisionWithLog(mergeUrl, revision)
+      def (comment, submitter) = retrieveCommentAndSubmitterFromRevisionWithLog(mergeUrl, revision)
+      printOut.println ' Handling revision ' + revision + ' by ' + submitter + ' ...'
 
       // verify on comment that revision should not be blocked
       if (shouldRevisionBeBlocked(comment)) {
@@ -96,7 +96,7 @@ public class SvnMergeTool {
 
         if (!dryRun) {
           printOut.println '  Committing block revision ' + revision + ' ...'
-          status = svnCommitMergeBlock(revision, comment, workingDirectory)
+          status = svnCommitMergeBlock(revision, comment, submitter, workingDirectory)
           if (!status) {
             throw new RuntimeException('Commiting block revision ' + revision + ' failed !')
           }
@@ -248,8 +248,8 @@ public class SvnMergeTool {
       commentFile << commentPrefix
       commentFile << 'Merged revisions : ' + revisionsListLabel + '\n'
       for (String revision in revisionsList) {
-        def revisionComment = retrieveCommentFromRevisionWithLog(mergeUrl, revision)
-        commentFile << 'Revision  r' + revision + '\n'
+        def (revisionComment, submitter) = retrieveCommentAndSubmitterFromRevisionWithLog(mergeUrl, revision)
+        commentFile << 'Revision  r' + revision + ' by ' + submitter + '\n'
         commentFile << '----------------------\n'
         commentFile << revisionComment + '\n'
         commentFile << '----------------------\n'
@@ -347,14 +347,15 @@ public class SvnMergeTool {
   }
 
 
-  protected def String retrieveCommentFromRevisionWithLog(String mergeUrl, String revision) {
+  protected def String[] retrieveCommentAndSubmitterFromRevisionWithLog(String mergeUrl, String revision) {
     def process = executeSvnCommand('log --xml -r ' + revision + ' ' + mergeUrl)
     def logXml = process.inText
 
     def log = new XmlSlurper().parseText(logXml)
     def comment = log.logentry.msg.text()
+    def submitter = log.logentry.author.text()
 
-    return comment
+    return [comment, submitter]
   }
 
   protected def boolean svnMergeBlock(String mergeUrl, String revision, String workingDirectory) {
@@ -394,10 +395,10 @@ public class SvnMergeTool {
     return svnCommit('-m "' + message + '"', workingDirectory)
   }
 
-  protected def boolean svnCommitMergeBlock(String revision, String comment, String workingDirectory) {
+  protected def boolean svnCommitMergeBlock(String revision, String comment, String submitter, String workingDirectory) {
     def commentFile = File.createTempFile('jigomerge-comments', '.txt')
     commentFile << commentPrefix
-    commentFile << 'Block revision r' + revision + '\n'
+    commentFile << 'Block revision r' + revision + ' by ' + submitter + '\n'
     commentFile << 'Initial message was : ' + comment
     def status = svnCommit('-F ' + commentFile.path, workingDirectory)
     commentFile.delete()
