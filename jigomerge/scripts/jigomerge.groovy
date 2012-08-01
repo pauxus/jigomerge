@@ -137,7 +137,7 @@ public class SvnMergeTool {
           }
         } else {
           if (mergeOneByOne) {
-            svnMergeAndCommit(mergeUrl, revision, validationScript, workingDirectory)
+            svnMergeAndCommit(mergeUrl, [revision], validationScript, workingDirectory)
           } else {
             printOut.println '  Revision ' + revision + ' has no conflict'
             // add current revision to revisions to be merged
