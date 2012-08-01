@@ -285,13 +285,23 @@ public class SvnMergeTool {
   }
 
   protected def List<File> listUnversionnedFiles(String workingDirectory) {
-    def process = svnStatus('--xml ', workingDirectory)
-    def statusXmlLog = process.inText
-    def files = []
+    def statusParser = null
+    def retryCount = 0
+    
+    while (!statusParser) {
+      def process = svnStatus('--xml ', workingDirectory)
+      def statusXmlLog = process.inText
+      try {
+        statusParser = new XmlSlurper().parseText(statusXmlLog)
+      } catch (org.xml.sax.SAXParseException e) {
+        if (retryCount++ > 3) throw e
+        printOut.println "XML-error, retrying"
+      }
+    }
 
-    def statusParser = new XmlSlurper().parseText(statusXmlLog)
     def unversionned = statusParser.target.entry.findAll() {it -> it."wc-status".@item.text() == 'unversioned'}
 
+    def files = []
     unversionned.each() {it ->
       def path = it.@path.text()
       files.add(new File(path))
@@ -301,10 +311,20 @@ public class SvnMergeTool {
   }
 
   protected def hasWorkspaceConflicts(String workingDirectory) {
-    def process = svnStatus('--xml ', workingDirectory)
-    def statusXmlLog = process.inText
+    def statusParser = null
+    def retryCount = 0
 
-    def statusParser = new XmlSlurper().parseText(statusXmlLog)
+    while (!statusParser) {
+      def process = svnStatus('--xml ', workingDirectory)
+      def statusXmlLog = process.inText
+      try {
+        statusParser = new XmlSlurper().parseText(statusXmlLog)
+      } catch (org.xml.sax.SAXParseException e) {
+        if (retryCount++ > 3) throw e
+        printOut.println "XML-error, retrying"
+      }
+    }
+
     def conflicts = statusParser.target.entry.findAll() {it -> it."wc-status".@item.text() == 'conflicted' || it."wc-status".@props.text() == 'conflicted' || it."wc-status".@"tree-conflicted".text() == "true" }
 
     return conflicts
@@ -348,10 +368,21 @@ public class SvnMergeTool {
 
 
   protected def String[] retrieveCommentAndSubmitterFromRevisionWithLog(String mergeUrl, String revision) {
-    def process = executeSvnCommand('log --xml -r ' + revision + ' ' + mergeUrl)
-    def logXml = process.inText
+    def log = null
+    def retryCount = 0
+    
+    while (!log) {
+      def process = executeSvnCommand('log --xml -r ' + revision + ' ' + mergeUrl)
+      def logXml = process.inText
 
-    def log = new XmlSlurper().parseText(logXml)
+      try {
+        log = new XmlSlurper().parseText(logXml)
+      } catch (org.xml.sax.SAXParseException e) {
+        if (retryCount++ > 3) throw e
+        printOut.println "XML-error, retrying"
+      }
+    }
+    
     def comment = log.logentry.msg.text()
     def submitter = log.logentry.author.text()
 
