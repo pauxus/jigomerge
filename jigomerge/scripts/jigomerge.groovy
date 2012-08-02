@@ -294,7 +294,7 @@ public class SvnMergeTool {
       try {
         statusParser = new XmlSlurper().parseText(statusXmlLog)
       } catch (org.xml.sax.SAXParseException e) {
-        if (retryCount++ > 3) throw e
+        if (retryCount++ > 3) { printOut.println "Giving up!"; throw e}
         printOut.println "XML-error, retrying"
       }
     }
@@ -320,7 +320,7 @@ public class SvnMergeTool {
       try {
         statusParser = new XmlSlurper().parseText(statusXmlLog)
       } catch (org.xml.sax.SAXParseException e) {
-        if (retryCount++ > 3) throw e
+        if (retryCount++ > 3) { printOut.println "Giving up!"; throw e}
         printOut.println "XML-error, retrying"
       }
     }
@@ -378,7 +378,7 @@ public class SvnMergeTool {
       try {
         log = new XmlSlurper().parseText(logXml)
       } catch (org.xml.sax.SAXParseException e) {
-        if (retryCount++ > 3) throw e
+        if (retryCount++ > 3) { printOut.println "Giving up!"; throw e}
         printOut.println "XML-error, retrying"
       }
     }
